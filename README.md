@@ -3,7 +3,8 @@
 An interactive, bilingual web application designed for Information and Communication Technology (ICT) students to understand the concepts of Data Validation and Error Prevention.
 
 [Learning Data Validation](https://charlotte-lau-hk.github.io/learning-data-validation/)
-Created with Google Gemini
+
+(Created with Google Gemini)
 
 ## 🌟 Features
 

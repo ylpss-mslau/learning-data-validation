@@ -1,641 +1,630 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  CheckCircle, 
-  XCircle, 
-  ShieldCheck, 
-  MousePointerClick,
-  Info
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Validation Learning Tool</title>
+    <!-- Load Tailwind CSS directly in the browser -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Smooth transitions for expand/collapse */
+        .config-panel { transition: all 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans pb-12">
 
-// --- TRANSLATION DICTIONARY ---
-const dict = {
-  en: {
-    headerTitle: "Data Validation Learning Tool",
-    headerSub: "Interactive concepts for ICT students",
-    tab1: "1. Testing Validation Rules",
-    tab2: "2. Preventing Errors with UI",
-    // Page 1
-    testInputTitle: "Test Your Input",
-    testInputPlaceholder: "Type something here to test...",
-    valid: "VALID",
-    invalid: "INVALID",
-    failReason: "Validation Failed Because:",
-    rulesTitle: "Validation Rules Setting",
-    rulesSub: "Enable rules below to see how they restrict what can be typed into the field above.",
-    rulePresence: "Presence Check",
-    rulePresenceDesc: "Ensures the user doesn't leave the field completely empty.",
-    ruleLength: "Length Check",
-    ruleLengthDesc: "Restricts the number of characters typed.",
-    lenMustBe: "Length must be",
-    lenGt: "Greater than",
-    lenLt: "Less than",
-    lenEq: "Exactly",
-    chars: "characters.",
-    ruleRange: "Range Check",
-    ruleRangeDesc: "Ensures a numeric value falls within a specific boundary.",
-    rangeBetween: "Value must be between",
-    rangeAnd: "and",
-    ruleType: "Type Check",
-    ruleTypeDesc: "Limits the kind of characters or data type allowed.",
-    typeInt: "Integer only (Whole Numbers)",
-    typeNoDigit: "Must NOT contain any digits (Text only)",
-    typeComplex: "Must contain Uppercase, Lowercase & Digits",
-    ruleFormat: "Format Check",
-    ruleFormatDesc: "Checks if the data matches a specific pattern.",
-    fmtEmail: "Must contain exactly one \"@\" (Like Email)",
-    fmtDate: "Must be \"YYYY-MM-DD\" (e.g. 2026-03-20)",
-    // Error Messages
-    errPresence: "Input cannot be empty (Presence Check)",
-    errLenGt: "Length must be greater than {val}",
-    errLenLt: "Length must be less than {val}",
-    errLenEq: "Length must be exactly {val}",
-    errRangeConfig: "Rule Configuration Error: Minimum ({min}) cannot be greater than Maximum ({max})",
-    errRangeEmpty: "Must enter a number for Range Check",
-    errRangeInvalid: "Must be a valid number for Range Check",
-    errRangeOut: "Value must be between {min} and {max}",
-    errTypeInt: "Must be an Integer (whole number) only",
-    errTypeNoDigit: "Must NOT contain any digits",
-    errTypeComplex: "Must contain uppercase, lowercase, and digits",
-    errFmtEmail: "Must contain exactly one '@' symbol",
-    errFmtDate: "Must match format YYYY-MM-DD",
-    // Page 2
-    uiTitle: "Why write complex validation rules?",
-    uiSub: "Instead of letting users type anything and showing them error messages later, good system designers use smart User Interface (UI) controls to prevent invalid data from being entered in the first place!",
-    uiPrevent: "How it prevents errors:",
-    uiDropdown: "Dropdown List",
-    uiDropLabel: "Select Hong Kong Region:",
-    uiDropChoose: "-- Please Choose --",
-    uiDropHKI: "Hong Kong Island",
-    uiDropKln: "Kowloon",
-    uiDropNT: "New Territories",
-    uiDropSelected: "Selected:",
-    uiNone: "None",
-    uiDropDesc: "Choices are limited. A user cannot misspell \"Kowloon\" or invent a non-existent region.",
-    uiSlider: "Number Slider",
-    uiSliderLabel: "Select Shoe Size (UK):",
-    uiSliderDesc: "Limits range (3 to 12) and limits precision (steps of 0.5). You can't enter \"9.333\" or \"100\".",
-    uiDate: "Date Picker",
-    uiDateLabel: "Select Date of Birth:",
-    uiDateFormat: "Format:",
-    uiDateDesc: "The calendar ensures the date actually exists (no Feb 30th), disables manual typing, and strictly formats it as YYYY-MM-DD."
-  },
-  zh: {
-    headerTitle: "數據驗證學習工具",
-    headerSub: "為資訊及通訊科技(ICT)學生而設的互動概念",
-    tab1: "1. 測試驗證規則",
-    tab2: "2. 使用用戶界面防止錯誤",
-    // Page 1
-    testInputTitle: "測試你的輸入",
-    testInputPlaceholder: "在此輸入以進行測試...",
-    valid: "有效",
-    invalid: "無效",
-    failReason: "驗證失敗原因：",
-    rulesTitle: "驗證規則設定",
-    rulesSub: "啟用以下規則，了解它們如何限制上述欄位的輸入。",
-    rulePresence: "存在檢查 (Presence Check)",
-    rulePresenceDesc: "確保使用者不會將欄位完全留空。",
-    ruleLength: "長度檢查 (Length Check)",
-    ruleLengthDesc: "限制輸入的字符數量。",
-    lenMustBe: "長度必須",
-    lenGt: "大於",
-    lenLt: "小於",
-    lenEq: "等於",
-    chars: "個字符。",
-    ruleRange: "範圍檢查 (Range Check)",
-    ruleRangeDesc: "確保數值落在特定範圍內。",
-    rangeBetween: "數值必須介乎",
-    rangeAnd: "和",
-    ruleType: "類型檢查 (Type Check)",
-    ruleTypeDesc: "限制允許的字符或數據類型。",
-    typeInt: "僅限整數 (Whole Numbers)",
-    typeNoDigit: "不可包含任何數字 (僅限文字)",
-    typeComplex: "必須包含大寫字母、小寫字母及數字",
-    ruleFormat: "格式檢查 (Format Check)",
-    ruleFormatDesc: "檢查數據是否符合特定格式。",
-    fmtEmail: "必須包含剛好一個 \"@\" (例如電郵地址)",
-    fmtDate: "必須為 \"YYYY-MM-DD\" (例如 2026-03-20)",
-    // Error Messages
-    errPresence: "輸入不能留空 (存在檢查)",
-    errLenGt: "長度必須大於 {val}",
-    errLenLt: "長度必須小於 {val}",
-    errLenEq: "長度必須等於 {val}",
-    errRangeConfig: "規則設定錯誤：最小值 ({min}) 不能大於最大值 ({max})",
-    errRangeEmpty: "必須輸入數字以進行範圍檢查",
-    errRangeInvalid: "必須是有效的數字以進行範圍檢查",
-    errRangeOut: "數值必須介乎 {min} 和 {max} 之間",
-    errTypeInt: "必須僅為整數",
-    errTypeNoDigit: "不可包含任何數字",
-    errTypeComplex: "必須包含大寫字母、小寫字母及數字",
-    errFmtEmail: "必須包含剛好一個 '@' 符號",
-    errFmtDate: "必須符合 YYYY-MM-DD 格式",
-    // Page 2
-    uiTitle: "為什麼要編寫複雜的驗證規則？",
-    uiSub: "與其讓使用者隨意輸入並在事後顯示錯誤訊息，優秀的系統設計師會使用智能的用戶界面 (UI) 控制項，從一開始就防止輸入無效數據！",
-    uiPrevent: "如何防止錯誤：",
-    uiDropdown: "下拉式選單 (Dropdown List)",
-    uiDropLabel: "選擇香港地區：",
-    uiDropChoose: "-- 請選擇 --",
-    uiDropHKI: "香港島",
-    uiDropKln: "九龍",
-    uiDropNT: "新界",
-    uiDropSelected: "已選擇：",
-    uiNone: "無",
-    uiDropDesc: "選項受到限制。使用者不能拼錯「九龍」或憑空捏造一個不存在的地區。",
-    uiSlider: "數字滑桿 (Slider)",
-    uiSliderLabel: "選擇鞋碼 (英國標準)：",
-    uiSliderDesc: "限制了範圍 (3 至 12) 和精確度 (每級 0.5)。你無法輸入「9.333」或「100」。",
-    uiDate: "日期選擇器 (Date Picker)",
-    uiDateLabel: "選擇出生日期：",
-    uiDateFormat: "格式：",
-    uiDateDesc: "日曆確保日期確實存在（沒有 2 月 30 日），停用手動輸入，並嚴格限制格式為 YYYY-MM-DD。"
-  }
-};
-
-export default function App() {
-  const [activeTab, setActiveTab] = useState('validation');
-  const [lang, setLang] = useState('en'); // Default to English
-
-  // Translation helper
-  const t = (key, params) => {
-    let text = dict[lang][key] || key;
-    if (params) {
-      Object.keys(params).forEach(k => {
-        text = text.replace(`{${k}}`, params[k]);
-      });
-    }
-    return text;
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-12">
-      {/* Header */}
-      <header className="bg-indigo-600 text-white p-6 shadow-md relative">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <ShieldCheck size={32} />
-              {t('headerTitle')}
-            </h1>
-            <p className="mt-2 text-indigo-100">{t('headerSub')}</p>
-          </div>
-          
-          {/* Language Switch */}
-          <div className="flex bg-indigo-700/50 rounded-lg p-1 border border-indigo-500 shrink-0">
-            <button 
-              onClick={() => setLang('en')} 
-              className={`px-4 py-1.5 text-sm font-bold rounded transition-colors ${lang === 'en' ? 'bg-white text-indigo-700 shadow-sm' : 'text-indigo-100 hover:text-white'}`}
-            >
-              English
-            </button>
-            <button 
-              onClick={() => setLang('zh')} 
-              className={`px-4 py-1.5 text-sm font-bold rounded transition-colors ${lang === 'zh' ? 'bg-white text-indigo-700 shadow-sm' : 'text-indigo-100 hover:text-white'}`}
-            >
-              中文
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* Navigation */}
-      <div className="max-w-4xl mx-auto mt-6 px-4">
-        <div className="flex bg-white rounded-lg shadow-sm p-1 border border-slate-200">
-          <button
-            onClick={() => setActiveTab('validation')}
-            className={`flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors ${
-              activeTab === 'validation' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {t('tab1')}
-          </button>
-          <button
-            onClick={() => setActiveTab('ui')}
-            className={`flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors ${
-              activeTab === 'ui' 
-                ? 'bg-indigo-50 text-indigo-700 shadow-sm' 
-                : 'text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            {t('tab2')}
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto mt-6 px-4">
-        {activeTab === 'validation' ? <ValidationPage lang={lang} t={t} /> : <UIPage lang={lang} t={t} />}
-      </main>
-    </div>
-  );
-}
-
-// --- PAGE 1: Testing Validation Rules ---
-function ValidationPage({ lang, t }) {
-  const [inputValue, setInputValue] = useState('');
-  
-  // Rule States
-  const [rules, setRules] = useState({
-    presence: { enabled: false },
-    length: { enabled: false, operator: '>', value: 3 },
-    range: { enabled: false, min: 1, max: 100 },
-    type: { enabled: false, condition: 'integer' },
-    format: { enabled: false, condition: 'one-at' }
-  });
-
-  const updateRule = (ruleName, field, value) => {
-    setRules(prev => ({
-      ...prev,
-      [ruleName]: { ...prev[ruleName], [field]: value }
-    }));
-  };
-
-  // Validation Logic (re-runs when input, rules, or language changes)
-  const validationResult = useMemo(() => {
-    let isValid = true;
-    let errors = [];
-
-    // 1. Presence Check
-    if (rules.presence.enabled) {
-      if (inputValue.trim() === '') {
-        isValid = false;
-        errors.push(t('errPresence'));
-      }
-    }
-
-    // 2. Length Check
-    if (rules.length.enabled) {
-      const len = inputValue.length;
-      const val = Number(rules.length.value);
-      if (rules.length.operator === '>' && !(len > val)) {
-        isValid = false; errors.push(t('errLenGt', {val}));
-      } else if (rules.length.operator === '<' && !(len < val)) {
-        isValid = false; errors.push(t('errLenLt', {val}));
-      } else if (rules.length.operator === '==' && !(len === val)) {
-        isValid = false; errors.push(t('errLenEq', {val}));
-      }
-    }
-
-    // 3. Range Check
-    if (rules.range.enabled) {
-      const minVal = Number(rules.range.min);
-      const maxVal = Number(rules.range.max);
-      
-      if (minVal > maxVal) {
-        isValid = false; 
-        errors.push(t('errRangeConfig', {min: minVal, max: maxVal}));
-      } else if (inputValue.trim() === '') {
-         isValid = false; errors.push(t('errRangeEmpty'));
-      } else {
-        const num = Number(inputValue);
-        if (isNaN(num)) {
-          isValid = false; errors.push(t('errRangeInvalid'));
-        } else if (num < minVal || num > maxVal) {
-          isValid = false; errors.push(t('errRangeOut', {min: minVal, max: maxVal}));
-        }
-      }
-    }
-
-    // 4. Type Check
-    if (rules.type.enabled) {
-      if (rules.type.condition === 'integer') {
-        if (!/^-?\d+$/.test(inputValue)) {
-          isValid = false; errors.push(t('errTypeInt'));
-        }
-      } else if (rules.type.condition === 'no-digit') {
-        if (/\d/.test(inputValue)) {
-          isValid = false; errors.push(t('errTypeNoDigit'));
-        }
-      } else if (rules.type.condition === 'complex') {
-        const hasUpper = /[A-Z]/.test(inputValue);
-        const hasLower = /[a-z]/.test(inputValue);
-        const hasDigit = /\d/.test(inputValue);
-        if (!(hasUpper && hasLower && hasDigit)) {
-          isValid = false; errors.push(t('errTypeComplex'));
-        }
-      }
-    }
-
-    // 5. Format Check
-    if (rules.format.enabled) {
-      if (rules.format.condition === 'one-at') {
-        const atCount = (inputValue.match(/@/g) || []).length;
-        if (atCount !== 1) {
-          isValid = false; errors.push(t('errFmtEmail'));
-        }
-      } else if (rules.format.condition === 'date') {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(inputValue)) {
-          isValid = false; errors.push(t('errFmtDate'));
-        }
-      }
-    }
-
-    return { isValid, errors };
-  }, [inputValue, rules, lang]);
-
-  return (
-    <div className="space-y-6">
-      {/* Test Input Area */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold mb-4">{t('testInputTitle')}</h2>
-        <div className="flex flex-col md:flex-row gap-4 items-start">
-          <div className="flex-1 w-full">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              placeholder={t('testInputPlaceholder')}
-              className={`w-full text-lg p-4 rounded-lg border-2 outline-none transition-colors ${
-                validationResult.isValid 
-                  ? 'border-green-400 focus:border-green-500 bg-green-50' 
-                  : 'border-red-400 focus:border-red-500 bg-red-50'
-              }`}
-            />
-          </div>
-          <div className={`flex items-center justify-center min-w-[160px] p-4 rounded-lg border-2 font-bold text-xl ${
-            validationResult.isValid 
-              ? 'bg-green-100 text-green-700 border-green-300' 
-              : 'bg-red-100 text-red-700 border-red-300'
-          }`}>
-            {validationResult.isValid ? (
-              <span className="flex items-center gap-2"><CheckCircle /> {t('valid')}</span>
-            ) : (
-              <span className="flex items-center gap-2"><XCircle /> {t('invalid')}</span>
-            )}
-          </div>
-        </div>
-        
-        {/* Error Messages Display */}
-        {!validationResult.isValid && validationResult.errors.length > 0 && (
-          <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
-            <p className="font-semibold mb-2">{t('failReason')}</p>
-            <ul className="list-disc pl-5 space-y-1">
-              {validationResult.errors.map((err, i) => (
-                <li key={i}>{err}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {/* Rules Configuration Pane */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          {t('rulesTitle')}
-        </h2>
-        <p className="text-slate-500 mb-6">{t('rulesSub')}</p>
-        
-        <div className="space-y-4">
-          <RuleCard 
-            title={t('rulePresence')} 
-            enabled={rules.presence.enabled}
-            onToggle={(val) => updateRule('presence', 'enabled', val)}
-            description={t('rulePresenceDesc')}
-          />
-
-          <RuleCard 
-            title={t('ruleLength')} 
-            enabled={rules.length.enabled}
-            onToggle={(val) => updateRule('length', 'enabled', val)}
-            description={t('ruleLengthDesc')}
-          >
-            <div className="flex gap-2 items-center mt-3 flex-wrap">
-              <span>{t('lenMustBe')}</span>
-              <select 
-                value={rules.length.operator}
-                onChange={(e) => updateRule('length', 'operator', e.target.value)}
-                className="border border-slate-300 rounded p-1"
-              >
-                <option value=">">{t('lenGt')}</option>
-                <option value="<">{t('lenLt')}</option>
-                <option value="==">{t('lenEq')}</option>
-              </select>
-              <input 
-                type="number" 
-                value={rules.length.value}
-                onChange={(e) => updateRule('length', 'value', e.target.value)}
-                className="border border-slate-300 rounded p-1 w-20"
-                min="0"
-              />
-              <span>{t('chars')}</span>
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white p-6 shadow-md relative">
+        <div class="max-w-4xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-bold flex items-center gap-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path><path d="m9 12 2 2 4-4"></path></svg>
+                    <span data-i18n="headerTitle">Data Validation Learning Tool</span>
+                </h1>
+                <p class="mt-2 text-indigo-100" data-i18n="headerSub">Interactive concepts for ICT students</p>
             </div>
-          </RuleCard>
-
-          <RuleCard 
-            title={t('ruleRange')} 
-            enabled={rules.range.enabled}
-            onToggle={(val) => updateRule('range', 'enabled', val)}
-            description={t('ruleRangeDesc')}
-          >
-            <div className="flex gap-2 items-center mt-3 flex-wrap">
-              <span>{t('rangeBetween')}</span>
-              <input 
-                type="number" 
-                value={rules.range.min}
-                max={rules.range.max}
-                onChange={(e) => updateRule('range', 'min', e.target.value)}
-                className="border border-slate-300 rounded p-1 w-24"
-              />
-              <span>{t('rangeAnd')}</span>
-              <input 
-                type="number" 
-                value={rules.range.max}
-                min={rules.range.min}
-                onChange={(e) => updateRule('range', 'max', e.target.value)}
-                className="border border-slate-300 rounded p-1 w-24"
-              />
-              {lang === 'zh' && <span>之間</span>}
-            </div>
-          </RuleCard>
-
-          <RuleCard 
-            title={t('ruleType')} 
-            enabled={rules.type.enabled}
-            onToggle={(val) => updateRule('type', 'enabled', val)}
-            description={t('ruleTypeDesc')}
-          >
-            <div className="mt-3">
-              <select 
-                value={rules.type.condition}
-                onChange={(e) => updateRule('type', 'condition', e.target.value)}
-                className="border border-slate-300 rounded p-2 w-full max-w-sm"
-              >
-                <option value="integer">{t('typeInt')}</option>
-                <option value="no-digit">{t('typeNoDigit')}</option>
-                <option value="complex">{t('typeComplex')}</option>
-              </select>
-            </div>
-          </RuleCard>
-
-          <RuleCard 
-            title={t('ruleFormat')} 
-            enabled={rules.format.enabled}
-            onToggle={(val) => updateRule('format', 'enabled', val)}
-            description={t('ruleFormatDesc')}
-          >
-            <div className="mt-3">
-              <select 
-                value={rules.format.condition}
-                onChange={(e) => updateRule('format', 'condition', e.target.value)}
-                className="border border-slate-300 rounded p-2 w-full max-w-sm"
-              >
-                <option value="one-at">{t('fmtEmail')}</option>
-                <option value="date">{t('fmtDate')}</option>
-              </select>
-            </div>
-          </RuleCard>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RuleCard({ title, description, enabled, onToggle, children }) {
-  return (
-    <div className={`p-4 rounded-lg border-2 transition-colors ${enabled ? 'border-indigo-400 bg-indigo-50/30' : 'border-slate-200 bg-slate-50'}`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-bold text-slate-800">{title}</h3>
-          <p className="text-sm text-slate-500">{description}</p>
-        </div>
-        <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
-          <input 
-            type="checkbox" 
-            className="sr-only peer" 
-            checked={enabled}
-            onChange={(e) => onToggle(e.target.checked)}
-          />
-          <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
-        </label>
-      </div>
-      {enabled && children && (
-        <div className="mt-4 pt-4 border-t border-indigo-100">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- PAGE 2: UI that Reduces Input Error ---
-function UIPage({ lang, t }) {
-  const [sliderVal, setSliderVal] = useState(5.5);
-  const [dateVal, setDateVal] = useState(() => {
-    const d = new Date();
-    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-    return d.toISOString().split('T')[0];
-  });
-  const [dropdownVal, setDropdownVal] = useState("");
-
-  const getRegionName = (val) => {
-    if (val === 'hki') return t('uiDropHKI');
-    if (val === 'kln') return t('uiDropKln');
-    if (val === 'nt') return t('uiDropNT');
-    return t('uiNone');
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="bg-indigo-50 p-6 rounded-xl border border-indigo-100 mb-8">
-        <h2 className="text-xl font-bold text-indigo-800 flex items-center gap-2 mb-2">
-          <Info size={24} />
-          {t('uiTitle')}
-        </h2>
-        <p className="text-indigo-900">{t('uiSub')}</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Dropdown Card */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
-          <div className="mb-4">
-            <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800">
-              <MousePointerClick size={20} className="text-blue-500"/> {t('uiDropdown')}
-            </h3>
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-600 mb-2">{t('uiDropLabel')}</label>
-            <select 
-              className="w-full border border-slate-300 rounded-lg p-3 bg-slate-50"
-              value={dropdownVal}
-              onChange={(e) => setDropdownVal(e.target.value)}
-            >
-              <option value="" disabled>{t('uiDropChoose')}</option>
-              <option value="hki">{t('uiDropHKI')}</option>
-              <option value="kln">{t('uiDropKln')}</option>
-              <option value="nt">{t('uiDropNT')}</option>
-            </select>
-            <p className="mt-2 text-sm text-slate-500">{t('uiDropSelected')} {getRegionName(dropdownVal)}</p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <p className="text-sm font-semibold text-green-700">{t('uiPrevent')}</p>
-            <p className="text-sm text-slate-600">{t('uiDropDesc')}</p>
-          </div>
-        </div>
-
-        {/* Slider Card */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
-          <div className="mb-4">
-            <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800">
-              <MousePointerClick size={20} className="text-blue-500"/> {t('uiSlider')}
-            </h3>
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-600 mb-2">{t('uiSliderLabel')}</label>
-            <input 
-              type="range" 
-              min="3" 
-              max="12" 
-              step="0.5" 
-              value={sliderVal}
-              onChange={(e) => setSliderVal(e.target.value)}
-              className="w-full accent-indigo-600"
-            />
-            <div className="mt-3 text-center text-2xl font-bold text-indigo-600">
-              {sliderVal}
-            </div>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <p className="text-sm font-semibold text-green-700">{t('uiPrevent')}</p>
-            <p className="text-sm text-slate-600">{t('uiSliderDesc')}</p>
-          </div>
-        </div>
-
-        {/* Datepicker Card */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
-          <div className="mb-4">
-            <h3 className="text-lg font-bold flex items-center gap-2 text-slate-800">
-              <MousePointerClick size={20} className="text-blue-500"/> {t('uiDate')}
-            </h3>
-          </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-600 mb-2">{t('uiDateLabel')}</label>
             
-            <div className="relative w-full border border-slate-300 rounded-lg bg-slate-50 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 hover:bg-slate-100 transition-colors">
-              <div className="flex justify-between items-center p-3 pointer-events-none">
-                <span className="text-slate-800 font-mono text-lg leading-none">{dateVal || 'YYYY-MM-DD'}</span>
-                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                </svg>
-              </div>
-              
-              <input 
-                type="date" 
-                value={dateVal}
-                onChange={(e) => setDateVal(e.target.value)}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0"
-                title="Click to select a date"
-              />
+            <!-- Language Switch -->
+            <div class="flex bg-indigo-700/50 rounded-lg p-1 border border-indigo-500 shrink-0">
+                <button id="btn-en" onclick="setLang('en')" class="px-4 py-1.5 text-sm font-bold rounded transition-colors bg-white text-indigo-700 shadow-sm">English</button>
+                <button id="btn-zh" onclick="setLang('zh')" class="px-4 py-1.5 text-sm font-bold rounded transition-colors text-indigo-100 hover:text-white">中文</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <div class="max-w-4xl mx-auto mt-6 px-4">
+        <div class="flex bg-white rounded-lg shadow-sm p-1 border border-slate-200">
+            <button id="tab-val-btn" onclick="switchTab('validation')" class="flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors bg-indigo-50 text-indigo-700 shadow-sm" data-i18n="tab1">1. Testing Validation Rules</button>
+            <button id="tab-ui-btn" onclick="switchTab('ui')" class="flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors text-slate-600 hover:bg-slate-50" data-i18n="tab2">2. Preventing Errors with UI</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto mt-6 px-4">
+        
+        <!-- ================= PAGE 1: VALIDATION ================= -->
+        <div id="page-validation" class="space-y-6">
+            
+            <!-- Test Input Area -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-bold mb-4" data-i18n="testInputTitle">Test Your Input</h2>
+                <div class="flex flex-col md:flex-row gap-4 items-start">
+                    <div class="flex-1 w-full">
+                        <input type="text" id="test-input" oninput="validate()" placeholder="Type something here to test..." class="w-full text-lg p-4 rounded-lg border-2 outline-none transition-colors border-green-400 focus:border-green-500 bg-green-50">
+                    </div>
+                    <div id="status-box" class="flex items-center justify-center min-w-[160px] p-4 rounded-lg border-2 font-bold text-xl bg-green-100 text-green-700 border-green-300">
+                        <span id="status-text" class="flex items-center gap-2">
+                            <svg id="icon-valid" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            <span data-i18n="valid">VALID</span>
+                        </span>
+                    </div>
+                </div>
+                
+                <!-- Error Messages Display -->
+                <div id="error-container" class="hidden mt-4 p-4 bg-red-50 text-red-700 rounded-lg border border-red-200">
+                    <p class="font-semibold mb-2" data-i18n="failReason">Validation Failed Because:</p>
+                    <ul id="error-list" class="list-disc pl-5 space-y-1"></ul>
+                </div>
             </div>
 
-            <p className="mt-2 text-sm text-slate-500">{t('uiDateFormat')} YYYY-MM-DD</p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100">
-            <p className="text-sm font-semibold text-green-700">{t('uiPrevent')}</p>
-            <p className="text-sm text-slate-600">{t('uiDateDesc')}</p>
-          </div>
+            <!-- Rules Configuration Pane -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2" data-i18n="rulesTitle">Validation Rules Setting</h2>
+                <p class="text-slate-500 mb-6" data-i18n="rulesSub">Enable rules below to see how they restrict what can be typed into the field above.</p>
+                
+                <div class="space-y-4">
+                    <!-- Rule: Presence -->
+                    <div id="card-presence" class="p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800" data-i18n="rulePresence">Presence Check</h3>
+                                <p class="text-sm text-slate-500" data-i18n="rulePresenceDesc">Ensures the user doesn't leave the field completely empty.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                                <input type="checkbox" id="rule-presence" class="sr-only peer" onchange="toggleCard('presence'); validate();">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Rule: Length -->
+                    <div id="card-length" class="p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800" data-i18n="ruleLength">Length Check</h3>
+                                <p class="text-sm text-slate-500" data-i18n="ruleLengthDesc">Restricts the number of characters typed.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                                <input type="checkbox" id="rule-length" class="sr-only peer" onchange="toggleCard('length'); validate();">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                        <div id="config-length" class="hidden mt-4 pt-4 border-t border-indigo-100">
+                            <div class="flex gap-2 items-center mt-3 flex-wrap">
+                                <span data-i18n="lenMustBe">Length must be</span>
+                                <select id="len-op" onchange="validate()" class="border border-slate-300 rounded p-1">
+                                    <option value=">" data-i18n="lenGt">Greater than</option>
+                                    <option value="<" data-i18n="lenLt">Less than</option>
+                                    <option value="==" data-i18n="lenEq">Exactly</option>
+                                </select>
+                                <input type="number" id="len-val" value="3" min="0" oninput="validate()" class="border border-slate-300 rounded p-1 w-20">
+                                <span data-i18n="chars">characters.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rule: Range -->
+                    <div id="card-range" class="p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800" data-i18n="ruleRange">Range Check</h3>
+                                <p class="text-sm text-slate-500" data-i18n="ruleRangeDesc">Ensures a numeric value falls within a specific boundary.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                                <input type="checkbox" id="rule-range" class="sr-only peer" onchange="toggleCard('range'); validate();">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                        <div id="config-range" class="hidden mt-4 pt-4 border-t border-indigo-100">
+                            <div class="flex gap-2 items-center mt-3 flex-wrap">
+                                <span data-i18n="rangeBetween">Value must be between</span>
+                                <input type="number" id="range-min" value="1" oninput="validate()" class="border border-slate-300 rounded p-1 w-24">
+                                <span data-i18n="rangeAnd">and</span>
+                                <input type="number" id="range-max" value="100" oninput="validate()" class="border border-slate-300 rounded p-1 w-24">
+                                <span class="zh-only hidden">之間</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rule: Type -->
+                    <div id="card-type" class="p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800" data-i18n="ruleType">Type Check</h3>
+                                <p class="text-sm text-slate-500" data-i18n="ruleTypeDesc">Limits the kind of characters or data type allowed.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                                <input type="checkbox" id="rule-type" class="sr-only peer" onchange="toggleCard('type'); validate();">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                        <div id="config-type" class="hidden mt-4 pt-4 border-t border-indigo-100">
+                            <div class="mt-3">
+                                <select id="type-cond" onchange="validate()" class="border border-slate-300 rounded p-2 w-full max-w-sm">
+                                    <option value="integer" data-i18n="typeInt">Integer only (Whole Numbers)</option>
+                                    <option value="no-digit" data-i18n="typeNoDigit">Must NOT contain any digits (Text only)</option>
+                                    <option value="complex" data-i18n="typeComplex">Must contain Uppercase, Lowercase & Digits</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rule: Format -->
+                    <div id="card-format" class="p-4 rounded-lg border-2 border-slate-200 bg-slate-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-slate-800" data-i18n="ruleFormat">Format Check</h3>
+                                <p class="text-sm text-slate-500" data-i18n="ruleFormatDesc">Checks if the data matches a specific pattern.</p>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                                <input type="checkbox" id="rule-format" class="sr-only peer" onchange="toggleCard('format'); validate();">
+                                <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                            </label>
+                        </div>
+                        <div id="config-format" class="hidden mt-4 pt-4 border-t border-indigo-100">
+                            <div class="mt-3">
+                                <select id="format-cond" onchange="validate()" class="border border-slate-300 rounded p-2 w-full max-w-sm">
+                                    <option value="one-at" data-i18n="fmtEmail">Must contain exactly one "@" (Like Email)</option>
+                                    <option value="date" data-i18n="fmtDate">Must be "YYYY-MM-DD" (e.g. 2026-03-20)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
-}
+
+        <!-- ================= PAGE 2: UI CONTROLS ================= -->
+        <div id="page-ui" class="space-y-6 hidden">
+            <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 mb-8">
+                <h2 class="text-xl font-bold text-indigo-800 flex items-center gap-2 mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
+                    <span data-i18n="uiTitle">Why write complex validation rules?</span>
+                </h2>
+                <p class="text-indigo-900" data-i18n="uiSub">Instead of letting users type anything and showing them error messages later, good system designers use smart User Interface (UI) controls to prevent invalid data from being entered in the first place!</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Dropdown Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold flex items-center gap-2 text-slate-800">
+                            <svg class="text-blue-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 9 5 12 1.774-5.226L21 14 9 9z"></path><path d="m16.071 16.071 4.243 4.243"></path></svg>
+                            <span data-i18n="uiDropdown">Dropdown List</span>
+                        </h3>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-slate-600 mb-2" data-i18n="uiDropLabel">Select Hong Kong Region:</label>
+                        <select id="ui-dropdown" onchange="updateUIPreviews()" class="w-full border border-slate-300 rounded-lg p-3 bg-slate-50">
+                            <option value="" disabled selected data-i18n="uiDropChoose">-- Please Choose --</option>
+                            <option value="hki" data-i18n="uiDropHKI">Hong Kong Island</option>
+                            <option value="kln" data-i18n="uiDropKln">Kowloon</option>
+                            <option value="nt" data-i18n="uiDropNT">New Territories</option>
+                        </select>
+                        <p class="mt-2 text-sm text-slate-500">
+                            <span data-i18n="uiDropSelected">Selected:</span> 
+                            <span id="ui-drop-result" class="font-bold text-slate-800" data-i18n="uiNone">None</span>
+                        </p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-100">
+                        <p class="text-sm font-semibold text-green-700" data-i18n="uiPrevent">How it prevents errors:</p>
+                        <p class="text-sm text-slate-600" data-i18n="uiDropDesc">Choices are limited. A user cannot misspell "Kowloon" or invent a non-existent region.</p>
+                    </div>
+                </div>
+
+                <!-- Slider Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold flex items-center gap-2 text-slate-800">
+                            <svg class="text-blue-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 9 5 12 1.774-5.226L21 14 9 9z"></path><path d="m16.071 16.071 4.243 4.243"></path></svg>
+                            <span data-i18n="uiSlider">Number Slider</span>
+                        </h3>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-slate-600 mb-2" data-i18n="uiSliderLabel">Select Shoe Size (UK):</label>
+                        <input type="range" id="ui-slider" min="3" max="12" step="0.5" value="5.5" oninput="updateUIPreviews()" class="w-full accent-indigo-600">
+                        <div id="ui-slider-result" class="mt-3 text-center text-2xl font-bold text-indigo-600">5.5</div>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-100">
+                        <p class="text-sm font-semibold text-green-700" data-i18n="uiPrevent">How it prevents errors:</p>
+                        <p class="text-sm text-slate-600" data-i18n="uiSliderDesc">Limits range (3 to 12) and limits precision (steps of 0.5). You can't enter "9.333" or "100".</p>
+                    </div>
+                </div>
+
+                <!-- Datepicker Card -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex flex-col">
+                    <div class="mb-4">
+                        <h3 class="text-lg font-bold flex items-center gap-2 text-slate-800">
+                            <svg class="text-blue-500" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 9 5 12 1.774-5.226L21 14 9 9z"></path><path d="m16.071 16.071 4.243 4.243"></path></svg>
+                            <span data-i18n="uiDate">Date Picker</span>
+                        </h3>
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-slate-600 mb-2" data-i18n="uiDateLabel">Select Date of Birth:</label>
+                        <div class="relative w-full border border-slate-300 rounded-lg bg-slate-50 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 hover:bg-slate-100 transition-colors">
+                            <div class="flex justify-between items-center p-3 pointer-events-none">
+                                <span id="ui-date-display" class="text-slate-800 font-mono text-lg leading-none"></span>
+                                <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <input type="date" id="ui-date" onchange="updateUIPreviews()" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-0" title="Click to select a date">
+                        </div>
+                        <p class="mt-2 text-sm text-slate-500"><span data-i18n="uiDateFormat">Format:</span> YYYY-MM-DD</p>
+                    </div>
+                    <div class="mt-6 pt-4 border-t border-slate-100">
+                        <p class="text-sm font-semibold text-green-700" data-i18n="uiPrevent">How it prevents errors:</p>
+                        <p class="text-sm text-slate-600" data-i18n="uiDateDesc">The calendar ensures the date actually exists (no Feb 30th), disables manual typing, and strictly formats it as YYYY-MM-DD.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // --- TRANSLATION DICTIONARY ---
+        const dict = {
+            en: {
+                headerTitle: "Data Validation Learning Tool",
+                headerSub: "Interactive concepts for ICT students",
+                tab1: "1. Testing Validation Rules",
+                tab2: "2. Preventing Errors with UI",
+                testInputTitle: "Test Your Input",
+                testInputPlaceholder: "Type something here to test...",
+                valid: "VALID",
+                invalid: "INVALID",
+                failReason: "Validation Failed Because:",
+                rulesTitle: "Validation Rules Setting",
+                rulesSub: "Enable rules below to see how they restrict what can be typed into the field above.",
+                rulePresence: "Presence Check",
+                rulePresenceDesc: "Ensures the user doesn't leave the field completely empty.",
+                ruleLength: "Length Check",
+                ruleLengthDesc: "Restricts the number of characters typed.",
+                lenMustBe: "Length must be",
+                lenGt: "Greater than",
+                lenLt: "Less than",
+                lenEq: "Exactly",
+                chars: "characters.",
+                ruleRange: "Range Check",
+                ruleRangeDesc: "Ensures a numeric value falls within a specific boundary.",
+                rangeBetween: "Value must be between",
+                rangeAnd: "and",
+                ruleType: "Type Check",
+                ruleTypeDesc: "Limits the kind of characters or data type allowed.",
+                typeInt: "Integer only (Whole Numbers)",
+                typeNoDigit: "Must NOT contain any digits (Text only)",
+                typeComplex: "Must contain Uppercase, Lowercase & Digits",
+                ruleFormat: "Format Check",
+                ruleFormatDesc: "Checks if the data matches a specific pattern.",
+                fmtEmail: "Must contain exactly one \"@\" (Like Email)",
+                fmtDate: "Must be \"YYYY-MM-DD\" (e.g. 2026-03-20)",
+                errPresence: "Input cannot be empty (Presence Check)",
+                errLenGt: "Length must be greater than {val}",
+                errLenLt: "Length must be less than {val}",
+                errLenEq: "Length must be exactly {val}",
+                errRangeConfig: "Rule Configuration Error: Minimum ({min}) cannot be greater than Maximum ({max})",
+                errRangeEmpty: "Must enter a number for Range Check",
+                errRangeInvalid: "Must be a valid number for Range Check",
+                errRangeOut: "Value must be between {min} and {max}",
+                errTypeInt: "Must be an Integer (whole number) only",
+                errTypeNoDigit: "Must NOT contain any digits",
+                errTypeComplex: "Must contain uppercase, lowercase, and digits",
+                errFmtEmail: "Must contain exactly one '@' symbol",
+                errFmtDate: "Must match format YYYY-MM-DD",
+                uiTitle: "Why write complex validation rules?",
+                uiSub: "Instead of letting users type anything and showing them error messages later, good system designers use smart User Interface (UI) controls to prevent invalid data from being entered in the first place!",
+                uiPrevent: "How it prevents errors:",
+                uiDropdown: "Dropdown List",
+                uiDropLabel: "Select Hong Kong Region:",
+                uiDropChoose: "-- Please Choose --",
+                uiDropHKI: "Hong Kong Island",
+                uiDropKln: "Kowloon",
+                uiDropNT: "New Territories",
+                uiDropSelected: "Selected:",
+                uiNone: "None",
+                uiDropDesc: "Choices are limited. A user cannot misspell \"Kowloon\" or invent a non-existent region.",
+                uiSlider: "Number Slider",
+                uiSliderLabel: "Select Shoe Size (UK):",
+                uiSliderDesc: "Limits range (3 to 12) and limits precision (steps of 0.5). You can't enter \"9.333\" or \"100\".",
+                uiDate: "Date Picker",
+                uiDateLabel: "Select Date of Birth:",
+                uiDateFormat: "Format:",
+                uiDateDesc: "The calendar ensures the date actually exists (no Feb 30th), disables manual typing, and strictly formats it as YYYY-MM-DD."
+            },
+            zh: {
+                headerTitle: "數據驗證學習工具",
+                headerSub: "為資訊及通訊科技(ICT)學生而設的互動概念",
+                tab1: "1. 測試驗證規則",
+                tab2: "2. 使用用戶界面防止錯誤",
+                testInputTitle: "測試你的輸入",
+                testInputPlaceholder: "在此輸入以進行測試...",
+                valid: "有效",
+                invalid: "無效",
+                failReason: "驗證失敗原因：",
+                rulesTitle: "驗證規則設定",
+                rulesSub: "啟用以下規則，了解它們如何限制上述欄位的輸入。",
+                rulePresence: "存在檢查 (Presence Check)",
+                rulePresenceDesc: "確保使用者不會將欄位完全留空。",
+                ruleLength: "長度檢查 (Length Check)",
+                ruleLengthDesc: "限制輸入的字符數量。",
+                lenMustBe: "長度必須",
+                lenGt: "大於",
+                lenLt: "小於",
+                lenEq: "等於",
+                chars: "個字符。",
+                ruleRange: "範圍檢查 (Range Check)",
+                ruleRangeDesc: "確保數值落在特定範圍內。",
+                rangeBetween: "數值必須介乎",
+                rangeAnd: "和",
+                ruleType: "類型檢查 (Type Check)",
+                ruleTypeDesc: "限制允許的字符或數據類型。",
+                typeInt: "僅限整數 (Whole Numbers)",
+                typeNoDigit: "不可包含任何數字 (僅限文字)",
+                typeComplex: "必須包含大寫字母、小寫字母及數字",
+                ruleFormat: "格式檢查 (Format Check)",
+                ruleFormatDesc: "檢查數據是否符合特定格式。",
+                fmtEmail: "必須包含剛好一個 \"@\" (例如電郵地址)",
+                fmtDate: "必須為 \"YYYY-MM-DD\" (例如 2026-03-20)",
+                errPresence: "輸入不能留空 (存在檢查)",
+                errLenGt: "長度必須大於 {val}",
+                errLenLt: "長度必須小於 {val}",
+                errLenEq: "長度必須等於 {val}",
+                errRangeConfig: "規則設定錯誤：最小值 ({min}) 不能大於最大值 ({max})",
+                errRangeEmpty: "必須輸入數字以進行範圍檢查",
+                errRangeInvalid: "必須是有效的數字以進行範圍檢查",
+                errRangeOut: "數值必須介乎 {min} 和 {max} 之間",
+                errTypeInt: "必須僅為整數",
+                errTypeNoDigit: "不可包含任何數字",
+                errTypeComplex: "必須包含大寫字母、小寫字母及數字",
+                errFmtEmail: "必須包含剛好一個 '@' 符號",
+                errFmtDate: "必須符合 YYYY-MM-DD 格式",
+                uiTitle: "為什麼要編寫複雜的驗證規則？",
+                uiSub: "與其讓使用者隨意輸入並在事後顯示錯誤訊息，優秀的系統設計師會使用智能的用戶界面 (UI) 控制項，從一開始就防止輸入無效數據！",
+                uiPrevent: "如何防止錯誤：",
+                uiDropdown: "下拉式選單 (Dropdown List)",
+                uiDropLabel: "選擇香港地區：",
+                uiDropChoose: "-- 請選擇 --",
+                uiDropHKI: "香港島",
+                uiDropKln: "九龍",
+                uiDropNT: "新界",
+                uiDropSelected: "已選擇：",
+                uiNone: "無",
+                uiDropDesc: "選項受到限制。使用者不能拼錯「九龍」或憑空捏造一個不存在的地區。",
+                uiSlider: "數字滑桿 (Slider)",
+                uiSliderLabel: "選擇鞋碼 (英國標準)：",
+                uiSliderDesc: "限制了範圍 (3 至 12) 和精確度 (每級 0.5)。你無法輸入「9.333」或「100」。",
+                uiDate: "日期選擇器 (Date Picker)",
+                uiDateLabel: "選擇出生日期：",
+                uiDateFormat: "格式：",
+                uiDateDesc: "日曆確保日期確實存在（沒有 2 月 30 日），停用手動輸入，並嚴格限制格式為 YYYY-MM-DD。"
+            }
+        };
+
+        let currentLang = 'en';
+
+        // Helper to translate strings with variables
+        function t(key, params = {}) {
+            let text = dict[currentLang][key] || key;
+            for (const [k, v] of Object.entries(params)) {
+                text = text.replace(`{${k}}`, v);
+            }
+            return text;
+        }
+
+        // --- LANGUAGE SWITCHING ---
+        function setLang(lang) {
+            currentLang = lang;
+            
+            // Update button styles
+            document.getElementById('btn-en').className = lang === 'en' ? 'px-4 py-1.5 text-sm font-bold rounded transition-colors bg-white text-indigo-700 shadow-sm' : 'px-4 py-1.5 text-sm font-bold rounded transition-colors text-indigo-100 hover:text-white';
+            document.getElementById('btn-zh').className = lang === 'zh' ? 'px-4 py-1.5 text-sm font-bold rounded transition-colors bg-white text-indigo-700 shadow-sm' : 'px-4 py-1.5 text-sm font-bold rounded transition-colors text-indigo-100 hover:text-white';
+            
+            // Update all static texts with data-i18n attributes
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if(el.tagName === 'OPTION') {
+                    el.innerText = t(key);
+                } else {
+                    el.textContent = t(key);
+                }
+            });
+
+            // Update placeholders & specific elements
+            document.getElementById('test-input').placeholder = t('testInputPlaceholder');
+            
+            // Handle Chinese-specific text layouts
+            document.querySelectorAll('.zh-only').forEach(el => {
+                el.style.display = lang === 'zh' ? 'inline' : 'none';
+            });
+
+            // Re-run validation and UI updates to refresh error messages/selections
+            validate();
+            updateUIPreviews();
+        }
+
+        // --- TAB SWITCHING ---
+        function switchTab(tabId) {
+            const isVal = tabId === 'validation';
+            
+            document.getElementById('page-validation').style.display = isVal ? 'block' : 'none';
+            document.getElementById('page-ui').style.display = isVal ? 'none' : 'block';
+
+            document.getElementById('tab-val-btn').className = isVal 
+                ? 'flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors bg-indigo-50 text-indigo-700 shadow-sm' 
+                : 'flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors text-slate-600 hover:bg-slate-50';
+            
+            document.getElementById('tab-ui-btn').className = !isVal 
+                ? 'flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors bg-indigo-50 text-indigo-700 shadow-sm' 
+                : 'flex-1 py-3 px-4 rounded-md font-medium text-center transition-colors text-slate-600 hover:bg-slate-50';
+        }
+
+        // --- UI PAGE LOGIC ---
+        function updateUIPreviews() {
+            // Slider
+            const sliderVal = document.getElementById('ui-slider').value;
+            document.getElementById('ui-slider-result').textContent = sliderVal;
+
+            // Date
+            const dateVal = document.getElementById('ui-date').value;
+            document.getElementById('ui-date-display').textContent = dateVal || 'YYYY-MM-DD';
+
+            // Dropdown
+            const dropVal = document.getElementById('ui-dropdown').value;
+            let resultText = t('uiNone');
+            if (dropVal === 'hki') resultText = t('uiDropHKI');
+            if (dropVal === 'kln') resultText = t('uiDropKln');
+            if (dropVal === 'nt') resultText = t('uiDropNT');
+            document.getElementById('ui-drop-result').textContent = resultText;
+        }
+
+        // --- VALIDATION PAGE LOGIC ---
+        function toggleCard(ruleName) {
+            const isChecked = document.getElementById(`rule-${ruleName}`).checked;
+            const configDiv = document.getElementById(`config-${ruleName}`);
+            const cardDiv = document.getElementById(`card-${ruleName}`);
+
+            // Update card styling
+            if (isChecked) {
+                cardDiv.classList.replace('border-slate-200', 'border-indigo-400');
+                cardDiv.classList.replace('bg-slate-50', 'bg-indigo-50/30');
+            } else {
+                cardDiv.classList.replace('border-indigo-400', 'border-slate-200');
+                cardDiv.classList.replace('bg-indigo-50/30', 'bg-slate-50');
+            }
+
+            // Show/Hide config options
+            if (configDiv) {
+                configDiv.style.display = isChecked ? 'block' : 'none';
+            }
+        }
+
+        function validate() {
+            const inputValue = document.getElementById('test-input').value;
+            let isValid = true;
+            let errors = [];
+
+            // 1. Presence
+            if (document.getElementById('rule-presence').checked) {
+                if (inputValue.trim() === '') {
+                    isValid = false; errors.push(t('errPresence'));
+                }
+            }
+
+            // 2. Length
+            if (document.getElementById('rule-length').checked) {
+                const len = inputValue.length;
+                const op = document.getElementById('len-op').value;
+                const val = Number(document.getElementById('len-val').value);
+                if (op === '>' && !(len > val)) {
+                    isValid = false; errors.push(t('errLenGt', {val}));
+                } else if (op === '<' && !(len < val)) {
+                    isValid = false; errors.push(t('errLenLt', {val}));
+                } else if (op === '==' && !(len === val)) {
+                    isValid = false; errors.push(t('errLenEq', {val}));
+                }
+            }
+
+            // 3. Range
+            if (document.getElementById('rule-range').checked) {
+                const minVal = Number(document.getElementById('range-min').value);
+                const maxVal = Number(document.getElementById('range-max').value);
+                
+                if (minVal > maxVal) {
+                    isValid = false; errors.push(t('errRangeConfig', {min: minVal, max: maxVal}));
+                } else if (inputValue.trim() === '') {
+                    isValid = false; errors.push(t('errRangeEmpty'));
+                } else {
+                    const num = Number(inputValue);
+                    if (isNaN(num)) {
+                        isValid = false; errors.push(t('errRangeInvalid'));
+                    } else if (num < minVal || num > maxVal) {
+                        isValid = false; errors.push(t('errRangeOut', {min: minVal, max: maxVal}));
+                    }
+                }
+            }
+
+            // 4. Type
+            if (document.getElementById('rule-type').checked) {
+                const cond = document.getElementById('type-cond').value;
+                if (cond === 'integer' && !/^-?\d+$/.test(inputValue)) {
+                    isValid = false; errors.push(t('errTypeInt'));
+                } else if (cond === 'no-digit' && /\d/.test(inputValue)) {
+                    isValid = false; errors.push(t('errTypeNoDigit'));
+                } else if (cond === 'complex') {
+                    const hasUpper = /[A-Z]/.test(inputValue);
+                    const hasLower = /[a-z]/.test(inputValue);
+                    const hasDigit = /\d/.test(inputValue);
+                    if (!(hasUpper && hasLower && hasDigit)) {
+                        isValid = false; errors.push(t('errTypeComplex'));
+                    }
+                }
+            }
+
+            // 5. Format
+            if (document.getElementById('rule-format').checked) {
+                const cond = document.getElementById('format-cond').value;
+                if (cond === 'one-at') {
+                    const atCount = (inputValue.match(/@/g) || []).length;
+                    if (atCount !== 1) { isValid = false; errors.push(t('errFmtEmail')); }
+                } else if (cond === 'date' && !/^\d{4}-\d{2}-\d{2}$/.test(inputValue)) {
+                    isValid = false; errors.push(t('errFmtDate'));
+                }
+            }
+
+            // UPDATE UI VISUALS
+            const inputEl = document.getElementById('test-input');
+            const statusBox = document.getElementById('status-box');
+            const statusText = document.getElementById('status-text');
+            const errorContainer = document.getElementById('error-container');
+            const errorList = document.getElementById('error-list');
+
+            if (isValid) {
+                // Set Green UI
+                inputEl.className = "w-full text-lg p-4 rounded-lg border-2 outline-none transition-colors border-green-400 focus:border-green-500 bg-green-50";
+                statusBox.className = "flex items-center justify-center min-w-[160px] p-4 rounded-lg border-2 font-bold text-xl bg-green-100 text-green-700 border-green-300";
+                statusText.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    <span data-i18n="valid">${t('valid')}</span>
+                `;
+                errorContainer.style.display = 'none';
+            } else {
+                // Set Red UI
+                inputEl.className = "w-full text-lg p-4 rounded-lg border-2 outline-none transition-colors border-red-400 focus:border-red-500 bg-red-50";
+                statusBox.className = "flex items-center justify-center min-w-[160px] p-4 rounded-lg border-2 font-bold text-xl bg-red-100 text-red-700 border-red-300";
+                statusText.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                    <span data-i18n="invalid">${t('invalid')}</span>
+                `;
+                
+                // Show errors
+                errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+                errorContainer.style.display = 'block';
+            }
+        }
+
+        // Initialize App on load
+        window.onload = function() {
+            // Set default date for UI tab
+            const d = new Date();
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            const todayStr = d.toISOString().split('T')[0];
+            document.getElementById('ui-date').value = todayStr;
+            
+            // Set initial language to English
+            setLang('en');
+        };
+
+    </script>
+</body>
+</html>
